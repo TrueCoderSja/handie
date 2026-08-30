@@ -1,38 +1,26 @@
-from fastapi import FastAPI, UploadFile, File
+import streamlit as st
 from fastai.vision.all import load_learner, PILImage
-import tempfile
-import os
+import tempfile, os
 
-app = FastAPI()
+st.title("Handie API")
 
-print("Loading Handie model...")
-learn = load_learner("hands_detector.pkl")
-print("Handie model loaded!")
+@st.cache_resource
+def get_model():
+    return load_learner("hands_detector.pkl")
 
-@app.get("/")
-def root():
-    return {"message": "Handie API is running"}
+learn = get_model()
 
-@app.get("/_stcore/health")
-def streamlit_health_shim():
-    return {"status": "ok"}
-
-@app.post("/predict")
-async def predict(file: UploadFile = File(...)):
-    suffix = os.path.splitext(file.filename)[1] or ".jpg"
-
+uploaded = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
+if uploaded:
+    suffix = os.path.splitext(uploaded.name)[1] or ".jpg"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp:
-        temp.write(await file.read())
+        temp.write(uploaded.read())
         temp_path = temp.name
 
     try:
         img = PILImage.create(temp_path)
         prediction, _, probabilities = learn.predict(img)
-
-        return {
-            "prediction": str(prediction),
-            "confidence": float(probabilities.max())
-        }
-
+        st.write(f"Prediction: **{prediction}**")
+        st.write(f"Confidence: {float(probabilities.max()):.2%}")
     finally:
         os.remove(temp_path)
