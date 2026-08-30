@@ -13,6 +13,10 @@ print("Handie model loaded!")
 def root():
     return {"message": "Handie API is running"}
 
+@app.get("/_stcore/health")
+def streamlit_health_shim():
+    return {"status": "ok"}
+
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     suffix = os.path.splitext(file.filename)[1] or ".jpg"
